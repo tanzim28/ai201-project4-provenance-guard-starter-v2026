@@ -44,61 +44,46 @@ Two things worth knowing before you pick numbers:
 ---
 ## 1.
 
-<!-- Your criterion. It must name a number. -->
-
-
+Across a calibration set of 10 human-authored writing samples, at most 1 is labelled `high-confidence AI` (a false positive rate $\le$ 10%).
 
 **Why this target:**
-
-
+On a publishing platform, false positives carry severe asymmetric costs: accusing authentic writers of cheating breaks platform trust and drives contributors away, whereas false negatives merely leave unflagged text on site. Setting a strict upper bound of 1 in 10 protects genuine human authors from automated over-blocking.
 
 ---
 
 ## 2.
 
-<!-- Your criterion. -->
-
-
+The combined score spread between a known benchmark human text and an unedited raw LLM generation on the same topic is at least 0.35 points on a 0.0 to 1.0 scale.
 
 **Why this target:**
-
-
+Because our scoring combines predictability (perplexity via GPT-2) and stylometric variety (sentence length variance and type-token ratio), texts with genuine organic variation versus uniform synthetic token flow must separate distinctly rather than clustering tightly around the uncertain middle band.
 
 ---
 
 ## 3.
 
-<!-- Your criterion. -->
-
-
+Across a diverse test suite of 15 varied text submissions, all three label variants (`high-confidence human`, `unsure`, and `high-confidence AI`) are reached, with at least 3 examples assigned to each label.
 
 **Why this target:**
-
-
+This ensures our two thresholds create genuine, balanced decision boundaries rather than collapsing into a binary switch or rendering the `unsure` middle zone unreachable dead space.
 
 ---
 
 ## 4.
 
-<!-- Your criterion. -->
-
-
+100% (5 of 5) of valid POST requests to `/appeal` update the item status in `logs/audit.jsonl` from `decided` to `under_review` while preserving the original scores and appending the creator's explanation.
 
 **Why this target:**
-
-
+An ethical safety layer must provide an immutable, accountable paper trail. When a user disputes a classification, the system must reliably record their appeal without overwriting the original diagnostic telemetry needed for auditing.
 
 ---
 
 ## 5.
 
-<!-- Your criterion. -->
-
-
+100% of malformed submissions (missing `text`, empty string `""`, whitespace-only, or missing `creator_id`) return an HTTP 400 bad request status code with a descriptive JSON error object without raising unhandled 500 exceptions or writing corrupt entries to `logs/audit.jsonl`.
 
 **Why this target:**
-
-
+In a production microservice, edge-case inputs and empty payloads must be caught at the schema validation boundary so they do not crash the downstream tokenizer or log invalid records into the audit database.
 
 ---
 
