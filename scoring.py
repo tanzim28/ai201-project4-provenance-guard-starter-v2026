@@ -1,105 +1,95 @@
 """
 Turning two numbers into one, and one number into something a person can read.
-← YOU BUILD THIS IN MILESTONES 4 AND 5
+(Milestones 4 & 5, plus Stretch Feature 1: Third Signal integration)
 
-Two functions live here, and both are stubs.
-
-`combine_signals` is where your false-positive decision from Milestone 1
-actually gets made. Everything above it — the labels, the appeal path — is
-downstream of a number this function produced.
-
-`score_to_label` is where you stop writing for a machine and start writing for
-a person. A score of 0.62 means nothing to a writer.
-
-⚠️ Your README's **Signals and Scoring** section has to name the file and
-function holding your combining rule. The grader checks your code against what
-you claim, so that line should read `scoring.py::combine_signals`.
+Two core functions live here:
+  - combine_signals: implements the weighting rule at scoring.py::combine_signals
+  - score_to_label: maps numeric scores to plain-English reader labels
 """
 
 import config
 
 
-def combine_signals(model_score: float, style_score: float) -> float:
+def combine_signals(
+    model_score: float,
+    style_score: float,
+    repetition_score: float = 0.50,
+) -> float:
     """
-    Combine two 0–1 signals into one 0–1 score. ← TODO (Milestone 4)
+    Combine signals into one continuous 0.0–1.0 score. (Milestone 4 + Stretch 1)
+    Higher means more likely AI.
 
-    Both inputs point the same way: higher means more likely AI. Your output
-    should too.
+    Default weighting rule:
+      0.50 * model predictability (detector.py)
+      0.30 * stylometric variation (stylometry.py)
+      0.20 * repetition redundancy (repetition.py)
 
-    Args:
-        model_score: from `detector.model_signal` — how predictable the text is.
-        style_score: from `stylometry.style_signal` — the shape of the text.
-
-    Returns:
-        A float from 0.0 (confidently human) to 1.0 (confidently AI).
-
-    ⚠️ **Write the rule down before you code it, and put the numbers in your
-    README.** A weighted average is the obvious choice and it is not the only
-    one. Things worth thinking about:
-
-      - **What happens when they disagree?** One signal at 0.9 and the other at
-        0.1 averages to 0.5 — "unsure". Is that what you want? It might be
-        exactly right: two methods disagreeing IS uncertainty. Or you might
-        decide one signal is more trustworthy when they split.
-
-      - **Which way do you want to be wrong?** Weighting toward the signal that
-        reads more human means fewer false accusations and more AI text
-        getting through. There's no weighting that avoids the trade.
-
-      - Milestone 4 asks you to find a case where your two signals split and
-        write it down. That case is what this rule exists to handle.
-
-    The weights in config.py are placeholders. Change them, or ignore them and
-    write a different rule.
+    Where it lives: scoring.py::combine_signals
     """
-    # TODO: replace this
-    return (
-        config.WEIGHT_MODEL_SIGNAL * model_score
-        + config.WEIGHT_STYLE_SIGNAL * style_score
+    weight_model = getattr(config, "WEIGHT_MODEL_SIGNAL", 0.50)
+    weight_style = getattr(config, "WEIGHT_STYLE_SIGNAL", 0.30)
+    weight_repetition = getattr(config, "WEIGHT_REPETITION_SIGNAL", 0.20)
+
+    combined = (
+        (weight_model * model_score)
+        + (weight_style * style_score)
+        + (weight_repetition * repetition_score)
     )
+    return round(float(max(min(combined, 1.0), 0.0)), 4)
 
 
-def score_to_label(score: float) -> tuple[str, str]:
+def score_to_label(score: float, verified_human: bool = False) -> tuple[str, str]:
     """
     Turn a score into a guess and the text a reader actually sees.
-    ← TODO (Milestone 5)
+    (Milestone 5)
 
     Returns:
-        (guess, label_text) — where `guess` is a short machine-readable string
-        like "ai" / "human" / "unsure", and `label_text` is the full sentence
-        shown to a person.
-
-    ⚠️ Write the label text for someone who has never heard the word
-    "threshold".
-
-        ✗ "human, 0.81 confidence"
-        ✓ "We think this was probably written by a person."
-
-    All three labels have to be **reachable**. If no score can produce one of
-    them, your ranges have a gap — and Milestone 5 asks you to submit text that
-    produces each one, which is how you'd find out.
-
-    The hardest one to write is "unsure". It has to admit uncertainty without
-    sounding like an accusation, because the person reading it may well have
-    written every word themselves. Your breakout asks your group what they'd
-    think if they got it on their own work. That question is the whole
-    milestone.
+        (guess, label_text)
     """
-    # TODO: replace this — thresholds are in config.py
-    if score >= config.AI_THRESHOLD:
-        return "ai", "PLACEHOLDER — write the high-confidence AI label."
-    if score <= config.HUMAN_THRESHOLD:
-        return "human", "PLACEHOLDER — write the high-confidence human label."
-    return "unsure", "PLACEHOLDER — write the unsure label."
+    if verified_human:
+        return (
+            "human",
+            "This work carries verified creator credentials and is attributed to an authentic author.",
+        )
+
+    ai_threshold = getattr(config, "AI_THRESHOLD", 0.78)
+    human_threshold = getattr(config, "HUMAN_THRESHOLD", 0.40)
+
+    if score >= ai_threshold:
+        return "ai", "We think this was likely generated with AI assistance."
+    if score <= human_threshold:
+        return "human", "We think this was written by a person."
+    return (
+        "unsure",
+        "Our system cannot tell with confidence whether this was written by a human or generated by AI.",
+    )
 
 
 def label_ranges() -> list[tuple[str, str]]:
     """
-    The score range each label covers. Your README needs these beside the
-    label text — given to you so the numbers can't drift apart from config.py.
+    The score range each label covers.
     """
+    ai_threshold = getattr(config, "AI_THRESHOLD", 0.78)
+    human_threshold = getattr(config, "HUMAN_THRESHOLD", 0.40)
     return [
-        ("high-confidence human", f"0.00 – {config.HUMAN_THRESHOLD:.2f}"),
-        ("unsure", f"{config.HUMAN_THRESHOLD:.2f} – {config.AI_THRESHOLD:.2f}"),
-        ("high-confidence AI", f"{config.AI_THRESHOLD:.2f} – 1.00"),
+        ("high-confidence human", f"0.00 – {human_threshold:.2f}"),
+        ("unsure", f"{human_threshold:.2f} – {ai_threshold:.2f}"),
+        ("high-confidence AI", f"{ai_threshold:.2f} – 1.00"),
     ]
+
+
+if __name__ == "__main__":
+    print("Label Ranges:")
+    for label, r in label_ranges():
+        print(f"  {label:<25} {r}")
+
+    print("\nTest Combines:")
+    test_cases = [
+        (0.20, 0.15, 0.10),  # Human
+        (0.85, 0.25, 0.30),  # Split case (predictable vocab, but bursty human sentences)
+        (0.92, 0.88, 0.80),  # AI
+    ]
+    for m, s, r in test_cases:
+        c = combine_signals(m, s, r)
+        guess, text = score_to_label(c)
+        print(f"  Model: {m:.2f}, Style: {s:.2f}, Rep: {r:.2f} -> Combined: {c:.4f} -> [{guess}] {text}")
