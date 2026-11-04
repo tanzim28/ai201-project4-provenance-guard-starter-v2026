@@ -150,14 +150,17 @@ def health():
 
 # ── YOU BUILD THIS ────────────────────────────────────────────────────────────
 
+
 @app.post("/submit")
 # @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
 def submit():
     """
     Take a piece of text, decide about it, log the decision, answer.
-    Milestone 3: One working signal, validation, and audit logging.
     """
     import detector
+    import stylometry
+    import repetition
+    import scoring
 
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
@@ -165,29 +168,34 @@ def submit():
 
     text = payload.get("text")
     creator_id = payload.get("creator_id")
+    verified_human = bool(payload.get("verified_human", False))
 
-    # Defensive validation against missing or empty inputs
     if text is None or not isinstance(text, str) or not text.strip():
         return jsonify({"error": "invalid_text", "message": "Field 'text' must be a non-empty string."}), 400
 
     if not creator_id or not isinstance(creator_id, str) or not creator_id.strip():
         return jsonify({"error": "invalid_creator", "message": "Field 'creator_id' must be a non-empty string."}), 400
 
-    # 1. Unique content_id for tracking and appeals
     content_id = f"c_{uuid.uuid4().hex[:12]}"
     word_count = len(text.strip().split())
 
-    # 2. Signal 1 — Predictability from local GPT-2
+    # 1. Signal 1 — Predictability
     model_score = detector.model_signal(text)
 
-    # 3. Placeholders for Milestone 4 & 5
-    style_score = 0.50
-    combined_score = model_score
-    guess = "likely_ai" if combined_score >= 0.5 else "likely_human"
-    confidence = round(float(combined_score), 2)
-    label = "Evaluation in progress (Signal 1 active)."
+    # 2. Signal 2 — Stylometry
+    style_score = stylometry.style_signal(text)
 
-    # 4. Structured log to logs/audit.jsonl
+    # 3. Stretch Signal 3 — Repetition
+    rep_score = repetition.repetition_signal(text)
+
+    # Combined score
+    combined_score = scoring.combine_signals(model_score, style_score, rep_score)
+
+    # Reader label & confidence
+    guess, label = scoring.score_to_label(combined_score, verified_human=verified_human)
+    confidence = round(float(combined_score if guess == "ai" else (1.0 - combined_score)), 2)
+
+    # Structured audit logging
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
@@ -200,7 +208,7 @@ def submit():
         word_count=word_count,
     )
 
-    # Both signal scores returned directly in the response
+    # Both signal scores returned directly in the response for Unit 8
     return jsonify({
         "content_id": content_id,
         "guess": guess,
@@ -208,7 +216,10 @@ def submit():
         "label": label,
         "model_score": model_score,
         "style_score": style_score,
+        "repetition_score": rep_score,
+        "combined_score": combined_score,
         "status": "decided",
+        "verified_human": verified_human,
     }), 200
 
 
@@ -216,13 +227,57 @@ def submit():
 def appeal():
     """
     A writer says you got it wrong.
-    (Stub for Milestone 3; fully built in Milestone 5).
+    Checks content_id, moves item to under_review, appends appeal to log.
     """
-    return jsonify({
-        "error": "not_implemented",
-        "message": "POST /appeal will be enabled in Milestone 5.",
-    }), 501
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "malformed_request", "message": "Request body must be a JSON object."}), 400
 
+    content_id = payload.get("content_id")
+    reasoning = payload.get("reasoning")
+
+    if not content_id or not isinstance(content_id, str):
+        return jsonify({"error": "invalid_content_id", "message": "Field 'content_id' is required."}), 400
+
+    if not reasoning or not isinstance(reasoning, str) or not reasoning.strip():
+        return jsonify({"error": "invalid_reasoning", "message": "Field 'reasoning' is required."}), 400
+
+    # 1. Verify content_id exists in audit log
+    history = audit.entries_for(content_id)
+    if not history:
+        return jsonify({"error": "not_found", "message": f"Content ID {content_id} not found in audit log."}), 404
+
+    # Extract creator_id from the original submission record
+    creator_id = history[0].get("creator_id", payload.get("creator_id", "unknown"))
+
+    # 2. Log appeal with creator_id
+    audit.log_appeal(content_id=content_id, creator_id=creator_id, reasoning=reasoning)
+
+    # 3. Confirm to writer
+    return jsonify({
+        "content_id": content_id,
+        "status": "under_review",
+        "message": "Appeal recorded successfully and queued for human editorial review.",
+    }), 200
+
+
+# ── Stretch Feature 2: GET /content/<id> ──────────────────────────────────────
+
+@app.get("/content/<content_id>")
+def get_content(content_id):
+    """
+    Returns current status and history for a specific item (Stretch Feature 2).
+    """
+    history = audit.entries_for(content_id)
+    if not history:
+        return jsonify({"error": "not_found", "message": f"Item {content_id} not found."}), 404
+
+    latest = history[-1]
+    return jsonify({
+        "content_id": content_id,
+        "status": latest.get("status", "decided"),
+        "history": history,
+    }), 200
 # ── Already works ─────────────────────────────────────────────────────────────
 
 @app.get("/log")

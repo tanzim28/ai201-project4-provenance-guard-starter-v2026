@@ -146,52 +146,134 @@ The "unsure" label must state the system's limitation plainly without accusing t
      diagnostics. -->
 
 ```bash
-$ curl -X POST http://127.0.0.1:5000/submit \
+$ curl -X POST [http://127.0.0.1:5000/submit](http://127.0.0.1:5000/submit) \
   -H "Content-Type: application/json" \
-  -d '{"text": "...", "creator_id": "..."}'
+  -d '{"text": "Wait. Did you see that? The sun dipped, throwing long amber shadows across the bay—a jagged, luminous streak—and suddenly the tide turned.", "creator_id": "author_tanzim"}'
 ```
 
 ```json
-
+{
+  "combined_score": 0.2035,
+  "confidence": 0.8,
+  "content_id": "c_0ae66553ff2b",
+  "guess": "human",
+  "label": "We think this was written by a person.",
+  "model_score": 0.3964,
+  "repetition_score": 0.0,
+  "status": "decided",
+  "style_score": 0.0178,
+  "verified_human": false
+}
 ```
 
 **An appeal**
 
 ```bash
-$ curl -X POST http://127.0.0.1:5000/appeal \
+$ curl -X POST [http://127.0.0.1:5000/appeal](http://127.0.0.1:5000/appeal) \
   -H "Content-Type: application/json" \
-  -d '{"content_id": "...", "reasoning": "..."}'
+  -d '{"content_id": "c_0ae66553ff2b", "reasoning": "I wrote this descriptive sentence about my evening walk along the pier."}'
 ```
 
 ```json
-
+{
+  "content_id": "c_0ae66553ff2b",
+  "message": "Appeal recorded successfully and queued for human editorial review.",
+  "status": "under_review"
+}
 ```
 
 **What the log shows afterwards**
 
 ```bash
-$ curl "http://127.0.0.1:5000/log?limit=3"
+$ curl "[http://127.0.0.1:5000/log?limit=3](http://127.0.0.1:5000/log?limit=3)"
 ```
 
 ```json
-
+{
+  "count": 3,
+  "entries": [
+    {
+      "combined_score": 0.4079,
+      "content_id": "c_e55c9497149a",
+      "creator_id": "author_tanzim",
+      "guess": "likely_human",
+      "label": "Evaluation in progress (Signal 1 active).",
+      "model_score": 0.4079,
+      "status": "decided",
+      "style_score": 0.5,
+      "timestamp": "2026-11-04T11:28:15+00:00",
+      "word_count": 15
+    },
+    {
+      "combined_score": 0.2035,
+      "content_id": "c_0ae66553ff2b",
+      "creator_id": "author_tanzim",
+      "guess": "human",
+      "label": "We think this was written by a person.",
+      "model_score": 0.3964,
+      "status": "decided",
+      "style_score": 0.0178,
+      "timestamp": "2026-11-04T11:46:40+00:00",
+      "word_count": 22
+    },
+    {
+      "content_id": "c_0ae66553ff2b",
+      "creator_id": "author_tanzim",
+      "event": "appeal",
+      "reasoning": "I wrote this descriptive sentence about my evening walk along the pier.",
+      "status": "under_review",
+      "timestamp": "2026-11-04T11:51:06+00:00"
+    }
+  ]
+}
 ```
-
+**Stretch Feature Demo: GET /content/<content_id>**
+```bash
+$ curl [http://127.0.0.1:5000/content/c_0ae66553ff2b](http://127.0.0.1:5000/content/c_0ae66553ff2b)
+```
+```json
+{
+  "content_id": "c_0ae66553ff2b",
+  "history": [
+    {
+      "combined_score": 0.2035,
+      "content_id": "c_0ae66553ff2b",
+      "creator_id": "author_tanzim",
+      "guess": "human",
+      "label": "We think this was written by a person.",
+      "model_score": 0.3964,
+      "status": "decided",
+      "style_score": 0.0178,
+      "timestamp": "2026-11-04T11:46:40+00:00",
+      "word_count": 22
+    },
+    {
+      "content_id": "c_0ae66553ff2b",
+      "creator_id": "author_tanzim",
+      "event": "appeal",
+      "reasoning": "I wrote this descriptive sentence about my evening walk along the pier.",
+      "status": "under_review",
+      "timestamp": "2026-11-04T11:51:06+00:00"
+    }
+  ],
+  "status": "under_review"
+}
+```
 ---
 
 ## How I Used AI
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Assistance in implementing stylometry.py to calculate sentence-length variance, vocabulary diversity (TTR), and punctuation density, and properly orient them so higher values represent AI.
+- *What came back:* Python logic using statistics.stdev for sentence lengths, type-token ratio calculation, and punctuation counts.
+- *What I changed:* Added safeguards for single-sentence edge cases (which would otherwise cause statistics.stdev to raise an exception) and calibrated the scoring weights to prevent organic human punctuation from being misclassified as AI.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Debugging a TypeError: log_appeal() missing 1 required positional argument: 'creator_id' traceback when calling POST /appeal.
+- *What came back:* A fix to look up the prior entry with audit.entries_for(content_id) and extract the original creator_id to pass to log_appeal.
+- *What I changed:* incorporated fallback handling so that if history[0] lacks a creator ID, it falls back to payload.get("creator_id", "unknown"), preventing unhandled exceptions.
 
 <!-- ═══════════════════════ UNIT 8 — THE TEST ═══════════════════════ -->
 
