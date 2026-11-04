@@ -36,10 +36,27 @@
 
 ## What This Does
 
-<!-- The path a submission takes, from arriving to the label a reader sees.
-     Six or seven steps — this is the trace you wrote in Milestone 1. -->
+Provenance Guard is an HTTP safety microservice designed for writing platforms to evaluate whether submitted text was likely drafted with AI assistance, while responsibly handling uncertainty and false accusations.
 
+### Declared Stretch Features
+1. **A Third Signal (Repetition & Lexical Redundancy):** Measures token and 3-gram repetition in `repetition.py` to flag uniform synthetic phrasing, integrated into `scoring.py::combine_signals` with explicit three-way weighting.
+2. **GET `/content/<id>` Endpoint:** Implemented in `app.py` to query `logs/audit.jsonl` by `content_id` and return an item's full telemetry, decision label, and appeal history.
+3. **A Verified-Human Path:** Supports an optional `verified_human: true` flag in `POST /submit` simulating verified creator or keystroke-dynamics credentials, appending a badge to the response and exempting the submission from harsh punitive flags.
 
+### The Path a Submission Takes
+1. **Arrival & Ingestion (`POST /submit`):** The client sends a JSON payload with `text`, `creator_id`, and optional `verified_human`. The endpoint validates the body, rejecting missing, non-string, or empty text with an HTTP 400 error.
+2. **Signal 1 — Predictability (`detector.py`):** The text passes to a local causal language model (GPT-2) that evaluates token-level cross-entropy loss (perplexity). High probability sequences yield a high AI score.
+3. **Signal 2 — Stylometry (`stylometry.py`):** The text is parsed for structural surface variation: sentence-length variance (standard deviation in word counts), vocabulary richness (type-token ratio), and punctuation density.
+4. **Signal 3 — Stretch: Repetition (`repetition.py`):** The text is scanned for repeated 3-gram sequences and vocabulary loops typical of unconstrained LLM generation.
+5. **Score Combination (`scoring.py::combine_signals`):** The three scores are combined into a single continuous score from 0.0 to 1.0 using a weighted average ($0.50 \times \text{detector} + 0.30 \times \text{stylometry} + 0.20 \times \text{repetition}$).
+6. **Threshold Mapping (`scoring.py::score_to_label`):** The score is mapped against operational cutoffs: $\le 0.40$ (`high-confidence human`), $0.40 - 0.78$ (`unsure`), and $\ge 0.78$ (`high-confidence AI`).
+7. **Audit Logging (`audit.py`):** The system records an immutable JSON line in `logs/audit.jsonl` with a unique `content_id`, timestamp, all signal metrics, the decision, and `status: "decided"`.
+8. **Client Response:** The server returns HTTP 200 with `content_id`, `guess`, `confidence`, `label`, `model_score`, `style_score`, and status.
+
+### Tracing the False Positive
+When an authentic human author writes with formal, academic, or predictable prose (common among non-native English speakers or technical writers), Signal 1 finds low perplexity and Signal 2 observes uniform sentence lengths, triggering a false $\ge 0.78$ flag (`high-confidence AI`).
+* **The Cost:** Accusing an authentic writer destroys platform trust and alienates contributors.
+* **The Safeguard:** The platform shows an objective, non-punitive label and provides the assigned `content_id`. The author can submit an appeal via `POST /appeal` with an explanation. The system updates the status to `under_review` without overwriting the original diagnostic telemetry, queueing it for human editorial review.
 
 ---
 
@@ -54,58 +71,65 @@
 ### Signal one — the model signal
 
 **What it measures:**
+Token predictability (perplexity) using a local causal language model (GPT-2). It calculates the average cross-entropy loss of predicting each successive token given the preceding context.
 
 **Why that might differ between human and AI writing:**
+Standard autoregressive language models generate text by sampling from high-probability tokens (e.g., top-$p$ nucleus sampling), producing sequences with consistently low perplexity. Human writers deviate frequently with idiomatic quirks, unusual vocabulary, and contextual surprises.
 
 **What it can't see:**
+It cannot distinguish polished, formal human writing (e.g., SAT essays, legal briefs, technical documentation, or prose by non-native speakers adhering strictly to grammar rules) from synthetic text. It also misses adversarial token modifications, such as introducing minor typos or zero-width spaces that artificially inflate perplexity.
 
 ### Signal two — the style signal
 
 **What it measures:**
+Surface-level structural variation across sentences and vocabulary: sentence-length standard deviation (burstiness), vocabulary diversity (type-token ratio), and punctuation density.
 
 **Why that might differ between human and AI writing:**
+Human writers naturally alternate between short, punchy statements and long, meandering compound clauses. LLM-generated prose tends to maintain consistent paragraph structure, uniform sentence lengths (15–22 words), and standardized punctuation.
 
 **What it can't see:**
+It is blind to semantic coherence, meaning, and topical context. A human writing a rigid list, a formulaic resume, or simple repetitive prose will trigger low variance, while an LLM prompted to "vary sentence lengths and use wild punctuation" will easily fool it.
+
+
+### Stretch: Signal three — lexical repetition
+
+**What it measures:**
+Repeated 3-gram frequencies and vocabulary loops across the submission.
+
+**Why that might differ between human and AI writing:**
+Synthetic generation often falls into subtle loops of structured transitional phrases ("Furthermore", "In conclusion", "It is important to remember").
+
+**What it can't see:**
+Domain-specific technical writing that naturally requires repeating specialized terms (e.g., legal clauses or medical reports).
 
 ### The combining rule
 
-<!-- Write the rule in words, then give the numbers. What happens when the two
-     signals disagree? -->
-
 **The rule:**
+The overall score is a linear weighted average of the predictability signal, the stylometric variation signal, and the repetition signal. When the two primary signals disagree (e.g., a formal human essay that has high model predictability but high organic sentence-length variance), the combination pulls the score into the `unsure` middle band rather than triggering an automated accusation.
 
 **The numbers:**
+Weights: $0.50$ for model predictability (`detector.py`), $0.30$ for surface stylometry (`stylometry.py`), and $0.20$ for repetition redundancy (`repetition.py`).
+Thresholds: Human $\le 0.40$, Unsure between $0.40$ and $0.78$, AI $\ge 0.78$.
 
 **Where it lives:** `scoring.py::combine_signals`
 
-<!-- ⚠️ The grader checks your code against that line. If your rule lives
-     somewhere else, say where. -->
-
 **A case where my two signals split, and what my rule does with it:**
-
-
+When a careful human writer drafts a technical explanation, GPT-2 finds the vocabulary predictable and assigns a high model score of $0.82$. However, because the author uses diverse sentence structures and pauses, Signal 2 measures a high sentence-length standard deviation and assigns a human score of $0.28$. Signal 3 finds low repetition ($0.25$). The combining rule computes:
+$$0.50(0.82) + 0.30(0.28) + 0.20(0.25) = 0.41 + 0.084 + 0.05 = 0.544$$
+Because $0.544$ falls between $0.40$ and $0.78$, the service classifies the piece as `unsure` with a neutral reader label, preventing an automated false accusation.
 
 ---
 
 ## Label Variants
 
-<!-- The exact text of all three labels, as a reader would see them, and the
-     score range each covers.
-
-     Write them for someone who has never heard the word "threshold". -->
-
 | Label | Score range | The exact text a reader sees |
 |---|---|---|
-| high-confidence human |  |  |
-| unsure |  |  |
-| high-confidence AI |  |  |
+| high-confidence human | 0.00 to 0.40 | We think this was written by a person. |
+| unsure | 0.40 to 0.78 | Our system cannot tell with confidence whether this was written by a human or generated by AI. |
+| high-confidence AI | 0.78 to 1.00 | We think this was likely generated with AI assistance. |
 
 **Why I worded the "unsure" one this way:**
-<!-- It's the hardest of the three. It has to admit uncertainty without
-     sounding like an accusation, because the person reading it may well have
-     written every word themselves. -->
-
-
+The "unsure" label must state the system's limitation plainly without accusing the author. Phrasing like *"Suspicious"* or *"Uncertain authenticity"* sounds like a soft accusation of cheating. By putting the limitation on the tool—*"Our system cannot tell with confidence"*—it communicates genuine machine uncertainty honestly without casting suspicion on authentic writers whose work fell into the middle band.
 
 ---
 
