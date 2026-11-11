@@ -281,24 +281,17 @@ $ curl [http://127.0.0.1:5000/content/c_0ae66553ff2b](http://127.0.0.1:5000/cont
 
 ## Rate Limiting
 
-**My limits:** ___ per minute, ___ per day
+*My limits:* 10 per minute, 200 per day
 
-**Why those numbers and not others:**
-<!-- Think about two people: a real writer submitting their own work a few
-     times an hour, and a script sending a thousand variations to map your
-     thresholds. Your numbers have to be liveable for the first and hostile to
-     the second. -->
+*Why those numbers and not others:*
+A genuine human author submitting content manually or editing an article will submit at most 2–3 times in a few minutes, meaning a burst window of 10 requests per minute provides plenty of headroom without accidental interruptions. The daily cap of 200 allows legitimate power authors full workflow capacity. Conversely, an automated threat actor attempting to map detection thresholds, bypass heuristics via dictionary permutations, or mount a denial-of-wallet attack will easily exceed 10 calls per minute, getting stopped immediately by the 429 barrier.
 
-**What a caller counts as:** <!-- per address, or per creator_id? They fail
-differently — one script can look like a thousand callers, and one household
-can look like one. -->
+*What a caller counts as:*
+Requests are primarily keyed by the submission's `creator_id` provided in the JSON payload. If the payload is malformed, lacks a `creator_id`, or is not valid JSON, the system safely falls back to keying by the client IP address (`get_remote_address()`).
 
-**The run of status codes when I pushed past it:**
-
-<!-- python run_attacks.py --flood 15 -->
-
-```
-
+*The run of status codes when I pushed past it:*
+```text
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 ```
 
 ---
