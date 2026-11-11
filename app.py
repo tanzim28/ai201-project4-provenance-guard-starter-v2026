@@ -179,6 +179,14 @@ def submit():
     content_id = f"c_{uuid.uuid4().hex[:12]}"
     word_count = len(text.strip().split())
 
+    # Defensive validation: catch text too short for the detector model (fixes MF02 crash)
+    if word_count < 5:
+        audit.log_rejection(creator_id=creator_id, reason="text_too_short", details="Minimum 5 words required.")
+        return jsonify({"error": "text_too_short", "message": "Text is too short to score reliably."}), 400
+
+    # 1. Signal 1 — Predictability
+    model_score = detector.model_signal(text)
+
     # 1. Signal 1 — Predictability
     model_score = detector.model_signal(text)
 

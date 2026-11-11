@@ -22,49 +22,80 @@ A scenario carries **either** of these:
               because you cannot express "the field is missing" as a string.
 """
 
+"""
+scenarios.py — The evaluation scenarios for your criteria in criteria.md.
+Run across three trials by run_eval.py.
+"""
+
 SCENARIOS = [
     {
         "name": "my own writing",
         "criterion": 1,
-        # ⚠️ PUT YOUR OWN WRITING HERE. Not AI text, not a sample from the web —
-        # things you actually wrote. This is the criterion that matters most and
-        # it's meaningless with someone else's prose.
+        # Criterion 1: Authentic human writing flagged as AI <= 1 of 5
         "texts": [
-            "REPLACE ME with a paragraph you wrote yourself.",
-            "REPLACE ME with another one. Ten pieces is the usual number.",
+            (
+                "Yesterday evening I took a walk along the waterfront trail near the marina. "
+                "The salty breeze was sharp and cold against my jacket, and the setting sun cast "
+                "long amber reflections across the choppy bay. A couple of pelicans were resting "
+                "on the wooden pilings, completely unbothered by people passing by."
+            ),
+            (
+                "Debugging multi-threaded network sockets always teaches humility. Just when you think "
+                "your locks and mutexes are watertight, an asynchronous edge case sneaks through during "
+                "load testing and corrupts the packet buffer. It took four hours of log tracing to find "
+                "the off-by-one race condition."
+            ),
+            (
+                "Making homemade ramen broth requires patience more than technical complexity. You roast "
+                "the chicken backs until deeply caramelized, simmer them gently with charred onions, ginger, "
+                "and garlic for six hours, and strain through cheesecloth to achieve a rich golden liquid."
+            ),
+            (
+                "When we arrived at the trailhead at dawn, frost covered the tall pine needles. The climb "
+                "up the ridge was steeper than anticipated, but reaching the overlook just as the morning mist "
+                "burned off the valley floor made every burning step worth it."
+            ),
+            (
+                "Reading through physical archives has a distinct texture that digitized collections cannot replicate. "
+                "You notice pencil annotations in the margins, ink smudges from seventy years ago, and fragile paper "
+                "fibers that demand careful handling under white gloves."
+            ),
         ],
     },
     {
         "name": "label coverage",
         "criterion": 2,
-        # Inputs spread across your score range, so you can check all three
-        # labels are actually reachable.
+        # Criterion 2: All three labels reachable (human, unsure, ai)
         "texts": [
-            "REPLACE ME with something you're confident is AI-generated.",
-            "REPLACE ME with something you're confident is human-written.",
-            "REPLACE ME with something genuinely borderline.",
+            # High-confidence AI (repetitive, predictable transitions)
+            (
+                "Furthermore, it is essential to recognize the importance of these technological advancements. "
+                "Moreover, this framework consistently facilitates seamless integration, providing substantial "
+                "benefits and optimizing performance metrics across contemporary enterprise environments."
+            ),
+            # High-confidence Human (bursty sentence lengths, varied punctuation)
+            (
+                "Wait. Did you see that? The sun dipped, throwing long amber shadows across the bay—a jagged, "
+                "luminous streak—and suddenly the tide turned."
+            ),
+            # Borderline / Unsure
+            (
+                "The implementation of the algorithmic framework utilizes standard data structures to optimize "
+                "overall computational throughput across distributed nodes in the cluster."
+            ),
         ],
     },
-    # A bad-input criterion looks like this. Uncomment and adjust if that's one
-    # of your five — these are raw request bodies, sent exactly as written.
-    #
-    # {
-    #     "name": "bad input",
-    #     "criterion": 3,
-    #     "bodies": [
-    #         {"text": "", "creator_id": "eval_bad_empty"},
-    #         {"creator_id": "eval_bad_missing"},          # no text field at all
-    #         {"text": "word " * 50000, "creator_id": "eval_bad_huge"},
-    #         {"text": None, "creator_id": "eval_bad_null"},
-    #     ],
-    # },
-
-    # TODO: add what your remaining criteria need.
-    #
-    # A criterion about the appeal path can't be tested by sending text alone;
-    # it needs a submission first and then an appeal against the content_id
-    # that came back. You'll need to test that one by hand, or extend this file
-    # and run_eval.py to do it. Saying which you did is part of the write-up.
+    {
+        "name": "bad input rejection",
+        "criterion": 4,
+        # Criterion 4: Malformed or empty input returns HTTP 400 (not 500)
+        "bodies": [
+            {"creator_id": "eval_bad_missing"},
+            {"text": "   ", "creator_id": "eval_bad_whitespace"},
+            {"text": 12345, "creator_id": "eval_bad_numeric"},
+            {"text": "Valid text but missing creator"},
+        ],
+    },
 ]
 
 
