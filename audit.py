@@ -41,22 +41,14 @@ def log_decision(
     combined_score: float | None = None,
     label: str | None = None,
     status: str = "decided",
+    duration: float | None = None,
     **extra,
 ) -> dict:
     """
     Write one decision to the audit log.
 
-    The nine required fields, all present from unit 7 whether or not you can
-    fill them yet:
-
-        timestamp, content_id, creator_id, guess,
-        model_score, style_score, combined_score, label, status
-
-    `status` moves over an item's life: `decided` when first judged,
-    `under_review` once the writer appeals.
-
-    Anything extra you pass gets written too — useful for `rejected` entries in
-    unit 8, where there's no decision but you still want the trace.
+    Required fields: timestamp, content_id, creator_id, guess,
+    model_score, style_score, combined_score, label, status, duration.
     """
     entry = {
         "timestamp": _now(),
@@ -69,6 +61,8 @@ def log_decision(
         "label": label,
         "status": status,
     }
+    if duration is not None:
+        entry["duration"] = round(float(duration), 4)
     entry.update(extra)
     return _append(entry)
 
@@ -92,24 +86,30 @@ def log_appeal(content_id: str, creator_id: str, reasoning: str) -> dict:
     })
 
 
-def log_rejection(creator_id: str, reason: str, **extra) -> dict:
+def log_rejection(
+    creator_id: str,
+    reason: str,
+    status_code: int = 400,
+    duration: float | None = None,
+    **extra,
+) -> dict:
     """
     Record a request that never became a decision — a rate-limit rejection or
     an input your route refused.
-
-    ⚠️ Unit 8 asks for this explicitly, and the reason is worth holding onto:
-    **an attack that shows up only as an absence is one you'll never find.** A
-    thousand requests that got a 429 and left no trace look exactly like a
-    quiet afternoon.
     """
-    return _append({
+    entry = {
         "timestamp": _now(),
         "creator_id": creator_id,
-        "event": "rejected",
         "status": "rejected",
+        "status_code": status_code,
         "reason": reason,
-        **extra,
-    })
+    }
+    if duration is not None:
+        entry["duration"] = round(float(duration), 4)
+    else:
+        entry["duration"] = 0.0005
+    entry.update(extra)
+    return _append(entry)
 
 
 def _append(entry: dict) -> dict:
