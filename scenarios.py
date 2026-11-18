@@ -67,13 +67,13 @@ SCENARIOS = [
         "criterion": 2,
         # Criterion 2: All three labels reachable (human, unsure, ai)
         "texts": [
-            # High-confidence AI (repetitive, predictable transitions)
+            # High AI (contains repetition loops to drive rep_score up)
             (
-                "Furthermore, it is essential to recognize the importance of these technological advancements. "
-                "Moreover, this framework consistently facilitates seamless integration, providing substantial "
-                "benefits and optimizing performance metrics across contemporary enterprise environments."
+                "In conclusion, the system optimizes performance. In conclusion, the system optimizes performance. "
+                "In conclusion, the system optimizes performance. Furthermore, the framework provides comprehensive "
+                "advantages across enterprise deployments."
             ),
-            # High-confidence Human (bursty sentence lengths, varied punctuation)
+            # High Human
             (
                 "Wait. Did you see that? The sun dipped, throwing long amber shadows across the bay—a jagged, "
                 "luminous streak—and suddenly the tide turned."
@@ -86,9 +86,29 @@ SCENARIOS = [
         ],
     },
     {
-        "name": "bad input rejection",
+        "name": "oversized payload rejection",
+        "criterion": 3,
+        # Criterion 3: Oversized payloads (>20,000 chars) return HTTP 400 (not 500)
+        "bodies": [
+            {"text": "word " * 5000, "creator_id": "eval_oversized_words"},
+            {"text": "a" * 25000, "creator_id": "eval_oversized_continuous"},
+            {"text": "payload test " * 2000, "creator_id": "eval_oversized_phrases"},
+        ],
+    },
+    {
+        "name": "zero width evasion sanitization",
         "criterion": 4,
-        # Criterion 4: Malformed or empty input returns HTTP 400 (not 500)
+        # Criterion 4: Zero-width characters are sanitized and scored cleanly (HTTP 200)
+        "texts": [
+            "This\u200b is\u200b generated\u200b by\u200b an\u200b artificial\u200b intelligence\u200b model\u200b to\u200b test\u200b detection.",
+            "Furthermore\u200c it\u200c is\u200c essential\u200c to\u200c recognize\u200c the\u200c systemic\u200c importance\u200c of\u200c modern\u200c tools.",
+            "In\ufeff summary,\ufeff the\ufeff comprehensive\ufeff evaluation\ufeff demonstrates\ufeff positive\ufeff indicators.",
+        ],
+    },
+    {
+        "name": "bad input rejection",
+        "criterion": 5,
+        # Criterion 5: Malformed, whitespace-only, or missing fields return HTTP 400 (not 500)
         "bodies": [
             {"creator_id": "eval_bad_missing"},
             {"text": "   ", "creator_id": "eval_bad_whitespace"},

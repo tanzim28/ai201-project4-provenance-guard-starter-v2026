@@ -1,0 +1,624 @@
+# Run log — capstone_before
+
+- Produced by: `run_eval.py::main`
+- Service: `app.py::submit` · scoring: `scoring.py::combine_signals`
+- 3 trials per criterion · 2026-11-17 23:47
+
+Fill in Target from `criteria.md`, and Run and Verdict from the output
+underneath. Whether a trial passed depends on the criterion you wrote.
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. my own writing |  |   |   |   |  |
+| 2. label coverage |  |   |   |   |  |
+| 3. oversized payload rejection |  |   |   |   |  |
+| 4. zero width evasion sanitization |  |   |   |   |  |
+| 5. bad input rejection |  |   |   |   |  |
+
+---
+
+## What actually came back
+
+Real output. Paste the relevant parts into your README — the rubric
+asks for the actual JSON, not a description of it.
+
+### my own writing
+
+**Trial 1**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.6,
+    "model_score": 0.5484,
+    "style_score": 0.4102,
+    "label": "We think this was written by a person.",
+    "sent": "Yesterday evening I took a walk along the waterfront trail near the ma"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.78,
+    "model_score": 0.3531,
+    "style_score": 0.1571,
+    "label": "We think this was written by a person.",
+    "sent": "Debugging multi-threaded network sockets always teaches humility. Just"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.85,
+    "model_score": 0.2829,
+    "style_score": 0.0333,
+    "label": "We think this was written by a person.",
+    "sent": "Making homemade ramen broth requires patience more than technical comp"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.72,
+    "model_score": 0.4889,
+    "style_score": 0.1312,
+    "label": "We think this was written by a person.",
+    "sent": "When we arrived at the trailhead at dawn, frost covered the tall pine "
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.87,
+    "model_score": 0.1203,
+    "style_score": 0.2209,
+    "label": "We think this was written by a person.",
+    "sent": "Reading through physical archives has a distinct texture that digitize"
+  }
+]
+```
+
+**Trial 2**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.6,
+    "model_score": 0.5484,
+    "style_score": 0.4102,
+    "label": "We think this was written by a person.",
+    "sent": "Yesterday evening I took a walk along the waterfront trail near the ma"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.78,
+    "model_score": 0.3531,
+    "style_score": 0.1571,
+    "label": "We think this was written by a person.",
+    "sent": "Debugging multi-threaded network sockets always teaches humility. Just"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.85,
+    "model_score": 0.2829,
+    "style_score": 0.0333,
+    "label": "We think this was written by a person.",
+    "sent": "Making homemade ramen broth requires patience more than technical comp"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.72,
+    "model_score": 0.4889,
+    "style_score": 0.1312,
+    "label": "We think this was written by a person.",
+    "sent": "When we arrived at the trailhead at dawn, frost covered the tall pine "
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.87,
+    "model_score": 0.1203,
+    "style_score": 0.2209,
+    "label": "We think this was written by a person.",
+    "sent": "Reading through physical archives has a distinct texture that digitize"
+  }
+]
+```
+
+**Trial 3**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.6,
+    "model_score": 0.5484,
+    "style_score": 0.4102,
+    "label": "We think this was written by a person.",
+    "sent": "Yesterday evening I took a walk along the waterfront trail near the ma"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.78,
+    "model_score": 0.3531,
+    "style_score": 0.1571,
+    "label": "We think this was written by a person.",
+    "sent": "Debugging multi-threaded network sockets always teaches humility. Just"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.85,
+    "model_score": 0.2829,
+    "style_score": 0.0333,
+    "label": "We think this was written by a person.",
+    "sent": "Making homemade ramen broth requires patience more than technical comp"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.72,
+    "model_score": 0.4889,
+    "style_score": 0.1312,
+    "label": "We think this was written by a person.",
+    "sent": "When we arrived at the trailhead at dawn, frost covered the tall pine "
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.87,
+    "model_score": 0.1203,
+    "style_score": 0.2209,
+    "label": "We think this was written by a person.",
+    "sent": "Reading through physical archives has a distinct texture that digitize"
+  }
+]
+```
+
+### label coverage
+
+**Trial 1**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.73,
+    "model_score": 0.3464,
+    "style_score": 0.3212,
+    "label": "We think this was written by a person.",
+    "sent": "Furthermore, it is essential to recognize the importance of these tech"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.8,
+    "model_score": 0.3964,
+    "style_score": 0.0178,
+    "label": "We think this was written by a person.",
+    "sent": "Wait. Did you see that? The sun dipped, throwing long amber shadows ac"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.63,
+    "model_score": 0.314,
+    "style_score": 0.7,
+    "label": "We think this was written by a person.",
+    "sent": "The implementation of the algorithmic framework utilizes standard data"
+  }
+]
+```
+
+**Trial 2**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.73,
+    "model_score": 0.3464,
+    "style_score": 0.3212,
+    "label": "We think this was written by a person.",
+    "sent": "Furthermore, it is essential to recognize the importance of these tech"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.8,
+    "model_score": 0.3964,
+    "style_score": 0.0178,
+    "label": "We think this was written by a person.",
+    "sent": "Wait. Did you see that? The sun dipped, throwing long amber shadows ac"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.63,
+    "model_score": 0.314,
+    "style_score": 0.7,
+    "label": "We think this was written by a person.",
+    "sent": "The implementation of the algorithmic framework utilizes standard data"
+  }
+]
+```
+
+**Trial 3**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.73,
+    "model_score": 0.3464,
+    "style_score": 0.3212,
+    "label": "We think this was written by a person.",
+    "sent": "Furthermore, it is essential to recognize the importance of these tech"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.8,
+    "model_score": 0.3964,
+    "style_score": 0.0178,
+    "label": "We think this was written by a person.",
+    "sent": "Wait. Did you see that? The sun dipped, throwing long amber shadows ac"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.63,
+    "model_score": 0.314,
+    "style_score": 0.7,
+    "label": "We think this was written by a person.",
+    "sent": "The implementation of the algorithmic framework utilizes standard data"
+  }
+]
+```
+
+### oversized payload rejection
+
+**Trial 1**
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "word word word word word word word word word word word word word word "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "payload test payload test payload test payload test payload test paylo"
+  }
+]
+```
+
+**Trial 2**
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "word word word word word word word word word word word word word word "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "payload test payload test payload test payload test payload test paylo"
+  }
+]
+```
+
+**Trial 3**
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "word word word word word word word word word word word word word word "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "payload test payload test payload test payload test payload test paylo"
+  }
+]
+```
+
+### zero width evasion sanitization
+
+**Trial 1**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.72,
+    "model_score": 0.1392,
+    "style_score": 0.7,
+    "label": "We think this was written by a person.",
+    "sent": "This\u200b is\u200b generated\u200b by\u200b an\u200b artificial\u200b intelligence\u200b model\u200b to\u200b test"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6,
+    "model_score": 0.3825,
+    "style_score": 0.7,
+    "label": "Our system cannot tell with confidence whether this was written by a human or generated by AI.",
+    "sent": "Furthermore\u200c it\u200c is\u200c essential\u200c to\u200c recognize\u200c the\u200c systemic\u200c importan"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.83,
+    "model_score": 0.0455,
+    "style_score": 0.5,
+    "label": "We think this was written by a person.",
+    "sent": "In\ufeff summary,\ufeff the\ufeff comprehensive\ufeff evaluation\ufeff demonstrates\ufeff positive\ufeff "
+  }
+]
+```
+
+**Trial 2**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.72,
+    "model_score": 0.1392,
+    "style_score": 0.7,
+    "label": "We think this was written by a person.",
+    "sent": "This\u200b is\u200b generated\u200b by\u200b an\u200b artificial\u200b intelligence\u200b model\u200b to\u200b test"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6,
+    "model_score": 0.3825,
+    "style_score": 0.7,
+    "label": "Our system cannot tell with confidence whether this was written by a human or generated by AI.",
+    "sent": "Furthermore\u200c it\u200c is\u200c essential\u200c to\u200c recognize\u200c the\u200c systemic\u200c importan"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.83,
+    "model_score": 0.0455,
+    "style_score": 0.5,
+    "label": "We think this was written by a person.",
+    "sent": "In\ufeff summary,\ufeff the\ufeff comprehensive\ufeff evaluation\ufeff demonstrates\ufeff positive\ufeff "
+  }
+]
+```
+
+**Trial 3**
+
+```json
+[
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.72,
+    "model_score": 0.1392,
+    "style_score": 0.7,
+    "label": "We think this was written by a person.",
+    "sent": "This\u200b is\u200b generated\u200b by\u200b an\u200b artificial\u200b intelligence\u200b model\u200b to\u200b test"
+  },
+  {
+    "status": 200,
+    "guess": "unsure",
+    "confidence": 0.6,
+    "model_score": 0.3825,
+    "style_score": 0.7,
+    "label": "Our system cannot tell with confidence whether this was written by a human or generated by AI.",
+    "sent": "Furthermore\u200c it\u200c is\u200c essential\u200c to\u200c recognize\u200c the\u200c systemic\u200c importan"
+  },
+  {
+    "status": 200,
+    "guess": "human",
+    "confidence": 0.83,
+    "model_score": 0.0455,
+    "style_score": 0.5,
+    "label": "We think this was written by a person.",
+    "sent": "In\ufeff summary,\ufeff the\ufeff comprehensive\ufeff evaluation\ufeff demonstrates\ufeff positive\ufeff "
+  }
+]
+```
+
+### bad input rejection
+
+**Trial 1**
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"creator_id\": \"eval_bad_missing\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "   "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": 12345, \"creator_id\": \"eval_bad_numeric\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": \"Valid text but missing creator\"}"
+  }
+]
+```
+
+**Trial 2**
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"creator_id\": \"eval_bad_missing\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "   "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": 12345, \"creator_id\": \"eval_bad_numeric\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": \"Valid text but missing creator\"}"
+  }
+]
+```
+
+**Trial 3**
+
+```json
+[
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"creator_id\": \"eval_bad_missing\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "   "
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": 12345, \"creator_id\": \"eval_bad_numeric\"}"
+  },
+  {
+    "status": 400,
+    "guess": null,
+    "confidence": null,
+    "model_score": null,
+    "style_score": null,
+    "label": null,
+    "sent": "{\"text\": \"Valid text but missing creator\"}"
+  }
+]
+```

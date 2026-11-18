@@ -184,8 +184,24 @@ def submit():
         audit.log_rejection(creator_id=creator_id, reason="text_too_short", details="Minimum 5 words required.")
         return jsonify({"error": "text_too_short", "message": "Text is too short to score reliably."}), 400
 
-    # 1. Signal 1 — Predictability
-    model_score = detector.model_signal(text)
+    # === UNIT 9 CAPSTONE EXTENSION: Hardening against DoS & Unicode Evasion ===
+    # 1. Payload size ceiling: reject oversized inputs (>20,000 chars) to prevent memory exhaustion
+    if len(text) > 20000:
+        audit.log_rejection(
+            creator_id=creator_id,
+            reason="payload_too_large",
+            details="Text exceeds 20,000 character maximum limit."
+        )
+        return jsonify({
+            "error": "payload_too_large",
+            "message": "Text exceeds maximum allowed length of 20,000 characters."
+        }), 400
+
+    # 2. Unicode sanitization: strip zero-width and invisible characters used in evasion attacks
+    invisible_chars = ["\u200b", "\u200c", "\u200d", "\ufeff"]
+    for ch in invisible_chars:
+        text = text.replace(ch, "")
+    # =========================================================================
 
     # 1. Signal 1 — Predictability
     model_score = detector.model_signal(text)

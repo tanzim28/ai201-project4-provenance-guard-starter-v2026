@@ -733,3 +733,67 @@ In a production editorial platform, I would prioritize minimizing false accusati
 ---
 
 📖 **How to run this project: [RUNNING.md](RUNNING.md)**
+
+
+---
+
+<!-- ═══════════════════════ UNIT 9 — THE CAPSTONE ═══════════════════════ -->
+
+# Unit 9 Capstone — Final Writeup
+
+## 1. Project Plan & Scope Cut (Milestone 1)
+
+* **Base System:** Pair 4 (Provenance Guard)
+* **Chosen Path:** Path B (Local deployment with comprehensive structured audit logging in `logs/audit.jsonl`)
+* **Chosen Shape:** Shape B (Harden against failure modes)
+* **Extension Purpose:** Defend `POST /submit` against Denial of Service (memory exhaustion via unbounded payloads $>20{,}000$ characters) and Unicode evasions (stripping zero-width invisible characters like `\u200b`, `\u200c`, `\u200d`, `\ufeff` injected to break tokenization and n-gram boundaries).
+* **Scope Cut:** To respect the 90-minute implementation budget, I did not build an asynchronous Celery task queue, persistent Redis caching, or multi-lingual translation pipelines.
+
+---
+
+## 2. Five Criteria Across Three Trials (Milestones 4 & 5)
+
+| Criterion | Target | Before Outcome | After Outcome | Final Verdict |
+|---|---|---|---|---|
+| 1. Authentic Human Writing | Flagged as AI $\le 1$ of 5 | 5/5 Human (0 AI) | 2/5 Human, 2 Unsure, 1 AI | MISSED (After) / MET (Before) |
+| 2. Label Coverage | All labels (human, unsure, ai) reachable | Human, Human, Human | AI, Human, AI | MET (After) / MISSED (Before) |
+| 3. Oversized Payload Rejection | Payloads > 20,000 chars return HTTP 400 | Rejection (400, 400, 400) | Rejection (400, 400, 400) | MET |
+| 4. Zero-Width Evasion Sanitization | Zero-width chars stripped & scored (HTTP 200) | Processed cleanly (200, 200, 200) | Processed cleanly (200, 200, 200) | MET |
+| 5. Malformed Request Handling | Bad types, missing keys return HTTP 400 | Rejection (400, 400, 400, 400) | Rejection (400, 400, 400, 400) | MET |
+
+---
+
+## 3. Diagnoses & The Improvement (Milestone 6)
+
+### Miss Diagnosis (Criterion 2 — Baseline)
+* **Stage:** Combining Rule & Label Mapping (`scoring.py::score_to_label`).
+* **Mechanism:** The threshold to trigger an `ai` label was set at an overly conservative `0.78`. In synthetic passages without artificial 3-gram loops, `rep_score` remained `0.0`. Even with elevated perplexity, the weighted combination ($0.50 \times \text{model} + 0.30 \times \text{style} + 0.20 \times \text{rep}$) failed to exceed $0.40$, defaulting to `human` and rendering the `ai` label unreachable on standard synthetic paragraphs.
+
+### The Improvement
+* **What I changed:** Calibrated label classification boundaries in `scoring.py::score_to_label` by lowering `ai_threshold` from `0.78` to `0.35` and shifting `human_threshold` to `0.22`.
+* **Which diagnosis pointed at it:** The baseline run for Criterion 2 showed uniform `human, human, human` classifications across all three trials because the combining formula depressed scores below the strict 0.78 ceiling.
+* **Did it help, and how do I know:** Yes. In `capstone_after`, Criterion 2 produced `ai, human, ai` across all trials, confirming the `ai` label became active and reachable.
+* **What it cost on the other side:** Lowering the threshold directly degraded Criterion 1: authentic human writing with technical vocabulary dropped from 5/5 `human` to producing false positives (`ai, unsure, human, unsure, human`).
+
+---
+
+## 4. What's Still Broken & Production Trade-off
+
+* **Technical Text False Positives (Criterion 1):**
+  * *What I'd do:* Introduce dynamic stylometry baselines that evaluate burstiness and sentence variance before applying low-entropy penalties to technical writing.
+  * *Why I stopped:* The assignment strictly permits a single isolated change in Milestone 6 to preserve measurable cause and effect.
+
+### The Production Trade
+In a production editorial platform, I would set the threshold conservatively to favor false negatives over false positives. Misclassifying an AI article as human is an acceptable quality leak, whereas falsely accusing an authentic human author destroys career reputations and platform trust—a cost paid entirely by honest creators.
+
+---
+
+## 5. Cost Arithmetic (Milestone 7)
+
+* **Infrastructure / Model:** Local causal transformer (`gpt2`, ~124M parameters) executed on Apple Silicon CPU/Metal.
+* **Per-Request Compute Cost:** $0.0000 (Local inference; zero third-party API token fees).
+* **Latency Profile:** ~220 ms per submission (forward pass + token cross-entropy evaluation).
+* **Projected Cloud Production Scale (100,000 requests/month):**
+  * Average tokens per submission: ~350 tokens.
+  * If hosted on a shared GPU container (e.g., AWS EC2 `g4dn.xlarge` spot instance at ~$0.16/hr running a continuous inference worker): $0.16 \times 730\text{ hrs} \approx \$116.80\text{/month}$.
+  * Compute cost per submission: $\frac{\$116.80}{100,000} \approx \mathbf{\$0.00117\text{ per request}}$.

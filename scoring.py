@@ -41,10 +41,6 @@ def combine_signals(
 def score_to_label(score: float, verified_human: bool = False) -> tuple[str, str]:
     """
     Turn a score into a guess and the text a reader actually sees.
-    (Milestone 5)
-
-    Returns:
-        (guess, label_text)
     """
     if verified_human:
         return (
@@ -52,12 +48,10 @@ def score_to_label(score: float, verified_human: bool = False) -> tuple[str, str
             "This work carries verified creator credentials and is attributed to an authentic author.",
         )
 
-    ai_threshold = getattr(config, "AI_THRESHOLD", 0.78)
-    human_threshold = getattr(config, "HUMAN_THRESHOLD", 0.40)
-
-    if score >= ai_threshold:
+    # Unit 9 Calibrated Bands
+    if score >= 0.35:
         return "ai", "We think this was likely generated with AI assistance."
-    if score <= human_threshold:
+    if score <= 0.22:
         return "human", "We think this was written by a person."
     return (
         "unsure",
