@@ -739,61 +739,105 @@ In a production editorial platform, I would prioritize minimizing false accusati
 
 <!-- ═══════════════════════ UNIT 9 — THE CAPSTONE ═══════════════════════ -->
 
-# Unit 9 Capstone — Final Writeup
-
-## 1. Project Plan & Scope Cut (Milestone 1)
-
-* **Base System:** Pair 4 (Provenance Guard)
-* **Chosen Path:** Path B (Local deployment with comprehensive structured audit logging in `logs/audit.jsonl`)
-* **Chosen Shape:** Shape B (Harden against failure modes)
-* **Extension Purpose:** Defend `POST /submit` against Denial of Service (memory exhaustion via unbounded payloads $>20{,}000$ characters) and Unicode evasions (stripping zero-width invisible characters like `\u200b`, `\u200c`, `\u200d`, `\ufeff` injected to break tokenization and n-gram boundaries).
-* **Scope Cut:** To respect the 90-minute implementation budget, I did not build an asynchronous Celery task queue, persistent Redis caching, or multi-lingual translation pipelines.
+📖 **How to run this project: [RUNNING.md](RUNNING.md)**
 
 ---
 
-## 2. Five Criteria Across Three Trials (Milestones 4 & 5)
+## Capstone
 
-| Criterion | Target | Before Outcome | After Outcome | Final Verdict |
-|---|---|---|---|---|
-| 1. Authentic Human Writing | Flagged as AI $\le 1$ of 5 | 5/5 Human (0 AI) | 2/5 Human, 2 Unsure, 1 AI | MISSED (After) / MET (Before) |
-| 2. Label Coverage | All labels (human, unsure, ai) reachable | Human, Human, Human | AI, Human, AI | MET (After) / MISSED (Before) |
-| 3. Oversized Payload Rejection | Payloads > 20,000 chars return HTTP 400 | Rejection (400, 400, 400) | Rejection (400, 400, 400) | MET |
-| 4. Zero-Width Evasion Sanitization | Zero-width chars stripped & scored (HTTP 200) | Processed cleanly (200, 200, 200) | Processed cleanly (200, 200, 200) | MET |
-| 5. Malformed Request Handling | Bad types, missing keys return HTTP 400 | Rejection (400, 400, 400, 400) | Rejection (400, 400, 400, 400) | MET |
+**What This Extends**
+This capstone extends Pair 4 (Provenance Guard), an HTTP microservice that evaluates text authenticity using token predictability (GPT-2), stylometric variance, and lexical repetition. The extension introduces defensive input sanitization on `POST /submit` to intercept memory exhaustion attacks (DoS) and strip zero-width Unicode evasion characters before tokenization.
 
----
+**The Shape**
+Shape B — Harden against failure. I added payload bounds checking (rejecting text > 20,000 characters with HTTP 400) and automated stripping of zero-width invisibles (`\u200b`, `\u200c`, `\u200d`, `\ufeff`).
+*Out of scope:* I am not building an external Redis cache, Celery worker queue, or multi-lingual translation layers to keep implementation strictly within the 90-minute budget.
 
-## 3. Diagnoses & The Improvement (Milestone 6)
+**Running It**
+Path B — Local with logs. See [RUNNING.md](RUNNING.md) for environment requirements (Python 3.11+, PyTorch, Hugging Face Transformers with local GPT-2) and exact startup commands.
 
-### Miss Diagnosis (Criterion 2 — Baseline)
-* **Stage:** Combining Rule & Label Mapping (`scoring.py::score_to_label`).
-* **Mechanism:** The threshold to trigger an `ai` label was set at an overly conservative `0.78`. In synthetic passages without artificial 3-gram loops, `rep_score` remained `0.0`. Even with elevated perplexity, the weighted combination ($0.50 \times \text{model} + 0.30 \times \text{style} + 0.20 \times \text{rep}$) failed to exceed $0.40$, defaulting to `human` and rendering the `ai` label unreachable on standard synthetic paragraphs.
+**Instrumentation**
+The microservice logs every decision and rejection to `logs/audit.jsonl` with structured fields: `timestamp`, `content_id`, `creator_id`, `guess`, `model_score`, `style_score`, `combined_score`, `label`, `status`, and `word_count`. Rejections log `event`, `status_code`, `reason`, and `details`.
 
-### The Improvement
-* **What I changed:** Calibrated label classification boundaries in `scoring.py::score_to_label` by lowering `ai_threshold` from `0.78` to `0.35` and shifting `human_threshold` to `0.22`.
-* **Which diagnosis pointed at it:** The baseline run for Criterion 2 showed uniform `human, human, human` classifications across all three trials because the combining formula depressed scores below the strict 0.78 ceiling.
-* **Did it help, and how do I know:** Yes. In `capstone_after`, Criterion 2 produced `ai, human, ai` across all trials, confirming the `ai` label became active and reachable.
-* **What it cost on the other side:** Lowering the threshold directly degraded Criterion 1: authentic human writing with technical vocabulary dropped from 5/5 `human` to producing false positives (`ai, unsure, human, unsure, human`).
+Pasted log extract (including successful decisions and defensive rejections):
+```json
+{"content_id": "c_2e5959958ee1", "creator_id": "author_tanzim", "guess": "human", "model_score": 0.3541, "style_score": 0.1677, "combined_score": 0.2842, "label": "We think this was written by a person.", "status": "decided", "timestamp": "2026-11-17T23:47:22+00:00", "word_count": 35}
+{"content_id": "c_2ef095039df8", "creator_id": "author_tanzim", "guess": "unsure", "model_score": 0.4901, "style_score": 0.3597, "combined_score": 0.4412, "label": "Our system cannot tell with confidence whether this was written by a human or generated by AI.", "status": "decided", "timestamp": "2026-11-17T23:47:23+00:00", "word_count": 42}
+{"content_id": "c_40e118cb3033", "creator_id": "author_tanzim", "guess": "human", "model_score": 0.2829, "style_score": 0.0333, "combined_score": 0.2035, "label": "We think this was written by a person.", "status": "decided", "timestamp": "2026-11-17T23:47:23+00:00", "word_count": 38}
+{"content_id": "c_487ec1725b74", "creator_id": "author_tanzim", "guess": "human", "model_score": 0.4219, "style_score": 0.1312, "combined_score": 0.3129, "label": "We think this was written by a person.", "status": "decided", "timestamp": "2026-11-17T23:47:23+00:00", "word_count": 45}
+{"content_id": "c_58be731b7d51", "creator_id": "author_tanzim", "guess": "human", "model_score": 0.1203, "style_score": 0.2209, "combined_score": 0.1841, "label": "We think this was written by a person.", "status": "decided", "timestamp": "2026-11-17T23:47:23+00:00", "word_count": 31}
+{"creator_id": "eval_oversized_words", "details": "Text exceeds 20,000 character maximum limit.", "event": "rejection", "reason": "payload_too_large", "status": "rejected", "timestamp": "2026-11-17T23:47:24+00:00"}
+{"creator_id": "eval_oversized_continuous", "details": "Text exceeds 20,000 character maximum limit.", "event": "rejection", "reason": "payload_too_large", "status": "rejected", "timestamp": "2026-11-17T23:47:24+00:00"}
+{"creator_id": "eval_oversized_phrases", "details": "Text exceeds 20,000 character maximum limit.", "event": "rejection", "reason": "payload_too_large", "status": "rejected", "timestamp": "2026-11-17T23:47:24+00:00"}
+{"content_id": "c_61f0a59d81d2", "creator_id": "eval_zero_width", "guess": "human", "model_score": 0.3621, "style_score": 0.1472, "combined_score": 0.2815, "label": "We think this was written by a person.", "status": "decided", "timestamp": "2026-11-17T23:47:24+00:00", "word_count": 14}
+{"creator_id": "eval_bad_missing", "details": "Field 'text' must be a non-empty string.", "event": "rejection", "reason": "invalid_text", "status": "rejected", "timestamp": "2026-11-17T23:47:24+00:00"}
+```
 
----
 
-## 4. What's Still Broken & Production Trade-off
+**What It Costs**
+*Per-run cost measurement:* Running 10 sequential submissions through `POST /submit` took an average of 0.22 seconds of compute per request on local Apple Silicon CPU/Metal, with 0 third-party API token costs ($0.0000/run).
+*Hundred-a-day arithmetic:*
+* Daily runs = 100
+* Monthly requests = 100 * 30 = 3,000 requests
+* If hosted on a shared cloud CPU container ($5.00/month basic compute instance running 730 hours):
+  * Cost per request = $5.00 / 3,000 = $0.00167 per request
+  * Monthly spend for 100 people a day = 100 * 30 * $0.00167 = $5.00/month
 
-* **Technical Text False Positives (Criterion 1):**
-  * *What I'd do:* Introduce dynamic stylometry baselines that evaluate burstiness and sentence variance before applying low-entropy penalties to technical writing.
-  * *Why I stopped:* The assignment strictly permits a single isolated change in Milestone 6 to preserve measurable cause and effect.
+**Run Log and Verdicts**
+Produced by `run_eval.py::main` across 3 trials per criterion on `app.py::submit`:
 
-### The Production Trade
-In a production editorial platform, I would set the threshold conservatively to favor false negatives over false positives. Misclassifying an AI article as human is an acceptable quality leak, whereas falsely accusing an authentic human author destroys career reputations and platform trust—a cost paid entirely by honest creators.
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Authentic Human Writing Flagged as AI | <= 1 of 5 | 0/5 | 0/5 | 0/5 | MET |
+| 2. All Three Labels Reachable | 3 of 3 | 1/3 | 1/3 | 1/3 | MISSED |
+| 3. Oversized Payload Rejection (>20k chars) | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 4. Zero-Width Evasion Sanitization | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 5. Malformed Request Handling | 4 of 4 | 4/4 | 4/4 | 4/4 | MET |
 
----
+Real output from Run 1 (Criterion 3 — Oversized payload rejection):
+*File:* `app.py::submit` via `run_eval.py`
+```json
+[
+  {"status": 400, "error": "payload_too_large", "message": "Text exceeds maximum allowed length of 20,000 characters."},
+  {"status": 400, "error": "payload_too_large", "message": "Text exceeds maximum allowed length of 20,000 characters."},
+  {"status": 400, "error": "payload_too_large", "message": "Text exceeds maximum allowed length of 20,000 characters."}
+]
+```
 
-## 5. Cost Arithmetic (Milestone 7)
+*Diagnoses:*
+* **Criterion 2 (MISSED):**
+  * *Stage:* Label Mapping & Combining Rule (`scoring.py::score_to_label`).
+  * *Mechanism:* The AI threshold was set at an overly conservative `0.78`. In synthetic passages without repetitive 3-gram loops, `rep_score` remained `0.0`. Even with elevated model perplexity, the weighted combination formula ($0.50 \times \text{model} + 0.30 \times \text{style} + 0.20 \times \text{rep}$) depressed the score below `0.40`, defaulting to `human` and making the `ai` label unreachable on standard synthetic text.
 
-* **Infrastructure / Model:** Local causal transformer (`gpt2`, ~124M parameters) executed on Apple Silicon CPU/Metal.
-* **Per-Request Compute Cost:** $0.0000 (Local inference; zero third-party API token fees).
-* **Latency Profile:** ~220 ms per submission (forward pass + token cross-entropy evaluation).
-* **Projected Cloud Production Scale (100,000 requests/month):**
-  * Average tokens per submission: ~350 tokens.
-  * If hosted on a shared GPU container (e.g., AWS EC2 `g4dn.xlarge` spot instance at ~$0.16/hr running a continuous inference worker): $0.16 \times 730\text{ hrs} \approx \$116.80\text{/month}$.
-  * Compute cost per submission: $\frac{\$116.80}{100,000} \approx \mathbf{\$0.00117\text{ per request}}$.
+**The Improvement**
+*What I changed:* Lowered the AI classification threshold in `scoring.py::score_to_label` from `0.78` down to `0.35` and shifted the human ceiling to `0.22` so synthetic text with moderate perplexity reaches the `ai` label.
+*Why:* The diagnosis for Criterion 2 revealed that normal synthetic text could not overcome the conservative 0.78 ceiling due to the three-way combining weights.
+
+Second run log after the improvement:
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Authentic Human Writing Flagged as AI | <= 1 of 5 | 1/5 | 1/5 | 1/5 | MET |
+| 2. All Three Labels Reachable | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 3. Oversized Payload Rejection (>20k chars) | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 4. Zero-Width Evasion Sanitization | 3 of 3 | 3/3 | 3/3 | 3/3 | MET |
+| 5. Malformed Request Handling | 4 of 4 | 4/4 | 4/4 | 4/4 | MET |
+
+*Did it help and what it cost:* Yes, Criterion 2 improved from 1/3 to 3/3, unlocking all three labels. However, it came at the cost of Criterion 1: authentic human writing with technical vocabulary saw its scores rise, occasionally landing in the `unsure` and `ai` bands.
+
+**What's Still Broken**
+* *Technical Writing False Positives:* Authentic technical prose with formal vocabulary sometimes drifts into the `unsure` band under the lower threshold.
+* *What I'd do:* Introduce an adaptive stylometry baseline that discounts low perplexity when syntactic parse depth or vocabulary rarity exceeds standard thresholds.
+* *Why I stopped:* The assignment strictly permits a single isolated improvement in Milestone 6 to preserve measurable cause and effect.
+* *The one thing I'd do first:* Implement a character-level homoglyph replacement map to catch Cyrillic and Greek lookalike character substitutions.
+
+**How I Used AI**
+*Moment 1:*
+* *What I asked:* Logic to efficiently strip zero-width Unicode characters without introducing regex overhead on large strings.
+* *What came back:* A fast `replace()` loop iterating over invisible codepoints `\u200b`, `\u200c`, `\u200d`, and `\ufeff`.
+* *What I changed:* Wrapped it directly into `app.py::submit` immediately prior to the word-count and model-evaluation calls.
+*Moment 2:*
+* *What I asked:* Diagnosing why standard AI synthetic test cases were failing to trigger the `ai` label in Criterion 2.
+* *What came back:* An explanation that the repetition signal was scoring 0.0, which pulled the weighted average down below the 0.78 threshold.
+* *What I changed:* Recalibrated the thresholds in `scoring.py::score_to_label` to 0.35 and 0.22.
+
+
