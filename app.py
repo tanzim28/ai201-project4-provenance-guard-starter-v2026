@@ -157,6 +157,9 @@ def submit():
     """
     Take a piece of text, decide about it, log the decision, answer.
     """
+    import time
+    t0 = time.perf_counter()
+
     import detector
     import stylometry
     import repetition
@@ -164,28 +167,27 @@ def submit():
 
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
+        audit.log_rejection(creator_id="unknown", reason="malformed_request", details="Request body must be a JSON object.")
         return jsonify({"error": "malformed_request", "message": "Request body must be a JSON object."}), 400
 
     text = payload.get("text")
     creator_id = payload.get("creator_id")
     verified_human = bool(payload.get("verified_human", False))
 
-    if text is None or not isinstance(text, str) or not text.strip():
-        return jsonify({"error": "invalid_text", "message": "Field 'text' must be a non-empty string."}), 400
-
     if not creator_id or not isinstance(creator_id, str) or not creator_id.strip():
+        audit.log_rejection(creator_id="unknown", reason="invalid_creator", details="Field 'creator_id' must be a non-empty string.")
         return jsonify({"error": "invalid_creator", "message": "Field 'creator_id' must be a non-empty string."}), 400
 
-    content_id = f"c_{uuid.uuid4().hex[:12]}"
-    word_count = len(text.strip().split())
+    if text is None or not isinstance(text, str) or not text.strip():
+        audit.log_rejection(creator_id=creator_id, reason="invalid_text", details="Field 'text' must be a non-empty string.")
+        return jsonify({"error": "invalid_text", "message": "Field 'text' must be a non-empty string."}), 400
 
-    # Defensive validation: catch text too short for the detector model (fixes MF02 crash)
-    if word_count < 5:
-        audit.log_rejection(creator_id=creator_id, reason="text_too_short", details="Minimum 5 words required.")
-        return jsonify({"error": "text_too_short", "message": "Text is too short to score reliably."}), 400
+    # 1. Unicode sanitization: strip zero-width and invisible evasion characters FIRST
+    invisible_chars = ["\u200b", "\u200c", "\u200d", "\ufeff"]
+    for ch in invisible_chars:
+        text = text.replace(ch, "")
 
-    # === UNIT 9 CAPSTONE EXTENSION: Hardening against DoS & Unicode Evasion ===
-    # 1. Payload size ceiling: reject oversized inputs (>20,000 chars) to prevent memory exhaustion
+    # 2. Payload size ceiling: reject huge inputs (>20,000 chars) before tokenization
     if len(text) > 20000:
         audit.log_rejection(
             creator_id=creator_id,
@@ -197,27 +199,26 @@ def submit():
             "message": "Text exceeds maximum allowed length of 20,000 characters."
         }), 400
 
-    # 2. Unicode sanitization: strip zero-width and invisible characters used in evasion attacks
-    invisible_chars = ["\u200b", "\u200c", "\u200d", "\ufeff"]
-    for ch in invisible_chars:
-        text = text.replace(ch, "")
-    # =========================================================================
+    # 3. Word count calculated AFTER sanitization
+    content_id = f"c_{uuid.uuid4().hex[:12]}"
+    word_count = len(text.strip().split())
 
-    # 1. Signal 1 — Predictability
+    # 4. Defensive validation: catch text too short for the detector model
+    if word_count < 5:
+        audit.log_rejection(creator_id=creator_id, reason="text_too_short", details="Minimum 5 words required.")
+        return jsonify({"error": "text_too_short", "message": "Text is too short to score reliably."}), 400
+
+    # Signals
     model_score = detector.model_signal(text)
-
-    # 2. Signal 2 — Stylometry
     style_score = stylometry.style_signal(text)
-
-    # 3. Stretch Signal 3 — Repetition
     rep_score = repetition.repetition_signal(text)
 
-    # Combined score
+    # Combined score & label
     combined_score = scoring.combine_signals(model_score, style_score, rep_score)
-
-    # Reader label & confidence
     guess, label = scoring.score_to_label(combined_score, verified_human=verified_human)
     confidence = round(float(combined_score if guess == "ai" else (1.0 - combined_score)), 2)
+
+    duration = round(time.perf_counter() - t0, 4)
 
     # Structured audit logging
     audit.log_decision(
@@ -230,9 +231,9 @@ def submit():
         label=label,
         status="decided",
         word_count=word_count,
+        duration=duration
     )
 
-    # Both signal scores returned directly in the response for Unit 8
     return jsonify({
         "content_id": content_id,
         "guess": guess,
@@ -244,8 +245,8 @@ def submit():
         "combined_score": combined_score,
         "status": "decided",
         "verified_human": verified_human,
+        "duration": duration
     }), 200
-
 
 @app.post("/appeal")
 def appeal():
