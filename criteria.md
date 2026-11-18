@@ -1,4 +1,54 @@
-# Acceptance criteria — Provenance Guard
+# Acceptance Criteria — Unit 9 Capstone
+
+Five criteria that define what "working" means for the extended Provenance Guard service, written before testing. At least three criteria directly evaluate this unit's work: the defensive input hardening extension, the run path, and the structured logging instrumentation.
+
+---
+
+## 1. Authentic Human Writing False-Positive Ceiling
+
+Across 5 authentic human writing samples, at most 1 is labelled `high-confidence AI` (a false-positive rate $\le 20\%$).
+
+**Why this target:**
+On a publishing platform, false accusations carry severe asymmetric harm: accusing authentic writers of machine generation alienates contributors and destroys platform trust. Conversely, subtle undetected AI text merely leaves unflagged prose on site. A ceiling of at most 1 in 5 protects genuine human creators from automated misclassification.
+
+---
+
+## 2. All Three Classification Labels Remain Reachable
+
+Across representative synthetic and organic inputs, all three primary classification labels (`high-confidence human`, `unsure`, and `high-confidence AI`) are reachable.
+
+**Why this target:**
+If our combining weights ($0.50 \times \text{model} + 0.30 \times \text{style} + 0.20 \times \text{rep}$) or decision cutoffs ($0.40$ and $0.78$) are calibrated improperly, the service collapses into a binary flag or renders the high-confidence AI / unsure labels completely unreachable dead space.
+
+---
+
+## 3. Oversized Payload Rejection (Extension)
+
+100% (3 of 3) of request payloads exceeding 20,000 characters sent to `POST /submit` are rejected at the route boundary with an HTTP 400 Bad Request status code.
+
+**Why this target:**
+This directly tests the defensive hardening extension. Unbounded input strings trigger severe memory allocation spikes and potential Denial of Service (DoS) inside the local PyTorch causal transformer during tokenization. Catching oversized text at the route boundary ensures system availability without crashing the inference worker.
+
+---
+
+## 4. Zero-Width Evasion Character Stripping (Extension)
+
+100% (3 of 3) of payloads containing invisible zero-width Unicode characters (`\u200b`, `\u200c`, `\u200d`, `\ufeff`) are sanitized and scored cleanly, returning HTTP 200 OK with valid telemetry rather than breaking tokenizer boundaries.
+
+**Why this target:**
+This directly tests the evasion-hardening extension. Adversarial actors inject zero-width invisibles between characters to split words, artificially inflate perplexity, and break n-gram repetitions. The pre-scoring sanitization step must neutralize these evasion vectors before the text enters the statistical language model.
+
+---
+
+## 5. Structured Audit Logging of Rejections (Instrumentation)
+
+100% (7 of 7) of rejected or malformed submissions (oversized strings, missing text, non-string types, or missing creator IDs) write an append-only structured entry to `logs/audit.jsonl` recording `event: "rejection"`, `reason`, and a descriptive message.
+
+**Why this target:**
+This directly tests the operational instrumentation requirement. In a production safety microservice, failures and rejected inputs cannot simply vanish into silence; every bad request must leave an immutable telemetry record so platform administrators can audit abuse patterns and identify attack spikes.
+
+
+<!--# Acceptance criteria — Provenance Guard
 
 Five criteria that say what "working" means for this service, written in unit 7
 **before** you built it.
@@ -86,6 +136,7 @@ An ethical safety layer must provide an immutable, accountable paper trail. When
 In a production microservice, edge-case inputs and empty payloads must be caught at the schema validation boundary so they do not crash the downstream tokenizer or log invalid records into the audit database.
 
 ---
+-->
 
 <!-- ─────────────────────────────────────────────────────────────────────────
      UNIT 8 — read this before you change anything above.
